@@ -37,6 +37,8 @@ Installing in `~`:
 ```
 $ cd
 $ git clone --single-branch https://github.com/gpakosz/.tmux.git
+$ git clone git@github.com:vian-jeremy/dotfile-tmux.git
+$ ln -s dotfile-tmux/.tmux.conf .tmux.conf
 $ ln -s -f .tmux/.tmux.conf
 $ cp .tmux/.tmux.conf.local .
 ```
