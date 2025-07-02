@@ -1,12 +1,8 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset=".logo/logomark+wordmark.svg">
-    <source media="(prefers-color-scheme: dark)" srcset=".logo/logomark+wordmark.svg">
-    <img alt="Oh my tmux! logo and wordmark" src=".logo/logomark+wordmark.svg">
-  </picture>
-</p>
+# Personal Tmux Configuration
 
-˗ˏˋ ★ ˎˊ˗ My self-contained, pretty and versatile tmux configuration, made with ❤️ ˗ˏˋ ★ ˎˊ˗
+˗ˏˋ ★ ˎˊ˗ My personal tmux configuration based on [Oh my tmux!](https://github.com/gpakosz/.tmux), customized for productivity and aesthetics ˗ˏˋ ★ ˎˊ˗
+
+This repository contains a complete, self-contained tmux configuration that combines the powerful "Oh my tmux!" framework with personal customizations and themes.
 
 <p align="center">
   <picture>
@@ -33,51 +29,64 @@ You can install Oh my tmux! at any of the following locations:
 - `$XDG_CONFIG_HOME/tmux`
 - `~/.config/tmux`
 
-Installing in `~`:
-```
-$ cd
-$ git clone --single-branch https://github.com/gpakosz/.tmux.git
+**Quick Install** (recommended):
+
+```bash
+# Clone this repository to your home directory
+$ cd ~
 $ git clone git@github.com:vian-jeremy/dotfile-tmux.git
 $ ln -s dotfile-tmux/.tmux.conf .tmux.conf
-$ ln -s -f .tmux/.tmux.conf
-$ cp .tmux/.tmux.conf.local .
+$ ln -s dotfile-tmux/.tmux.conf.local .tmux.conf.local
 ```
 
-Installing in `$XDG_CONFIG_HOME/tmux`:
-```
-$ git clone --single-branch https://github.com/gpakosz/.tmux.git "/path/to/oh-my-tmux"
+**Alternative Install Locations**:
+
+For `$XDG_CONFIG_HOME/tmux`:
+```bash
+$ git clone git@github.com:vian-jeremy/dotfile-tmux.git "$HOME/dotfile-tmux"
 $ mkdir -p "$XDG_CONFIG_HOME/tmux"
-$ ln -s /path/to/oh-my-tmux/.tmux.conf "$XDG_CONFIG_HOME/tmux/tmux.conf"
-$ cp /path/to/oh-my-tmux/.tmux.conf.local "$XDG_CONFIG_HOME/tmux/tmux.conf.local"
+$ ln -s "$HOME/dotfile-tmux/.tmux.conf" "$XDG_CONFIG_HOME/tmux/tmux.conf"
+$ ln -s "$HOME/dotfile-tmux/.tmux.conf.local" "$XDG_CONFIG_HOME/tmux/tmux.conf.local"
 ```
 
-Installing in `~/.config/tmux`:
-```
-$ git clone --single-branch https://github.com/gpakosz/.tmux.git "/path/to/oh-my-tmux"
+For `~/.config/tmux`:
+```bash
+$ git clone git@github.com:vian-jeremy/dotfile-tmux.git "$HOME/dotfile-tmux"
 $ mkdir -p ~/.config/tmux
-$ ln -s /path/to/oh-my-tmux/.tmux.conf ~/.config/tmux/tmux.conf
-$ cp /path/to/oh-my-tmux/.tmux.conf.local ~/.config/tmux/tmux.conf.local
+$ ln -s "$HOME/dotfile-tmux/.tmux.conf" ~/.config/tmux/tmux.conf
+$ ln -s "$HOME/dotfile-tmux/.tmux.conf.local" ~/.config/tmux/tmux.conf.local
 ```
-⚠️ When installing `$XDG_CONFIG_HOME/tmux` or `~/.config/tmux`, the configuration
-file names don't have a leading `.` character.
 
-🚨 **You should never alter the main `.tmux.conf` or `tmux.conf` file. If you do,
-you're on your own. Instead, every customization should happen in your
-`.tmux.conf.local` or `tmux.conf.local` customization file copy.**
+## Configuration Architecture
 
-If you're a Vim user, setting the `EDITOR` environment variable to `vim` will
-enable and further customize the `vi-style` key bindings (see tmux manual).
+This configuration uses a two-file system:
 
-If you're new to tmux, I recommend you to read the [tmux getting started
-guide][getting-started], as well as the [tmux 3: Productive Mouse-Free
-Development][bhtmux3] book by [@bphogan].
+- **`.tmux.conf`**: Core framework (based on Oh my tmux!) - 🚨 **DO NOT MODIFY**
+- **`.tmux.conf.local`**: Personal customizations and themes - ✅ **SAFE TO EDIT**
 
-Now proceed to [adjust] your `.local` customization file copy.
+🚨 **Important**: Never alter the main `.tmux.conf` file. All customizations should be made in `.tmux.conf.local` only.
 
-[getting-started]: https://github.com/tmux/tmux/wiki/Getting-Started
-[bhtmux3]: https://pragprog.com/titles/bhtmux3/tmux-3/
-[@bphogan]: https://bphogan.com/
-[adjust]: #configuration
+## Personal Customizations
+
+This configuration includes:
+
+- **Custom Color Scheme**: Carefully selected colors for better readability and aesthetics
+- **Enhanced Status Line**: Shows relevant system information (battery, uptime, hostname)
+- **Optimized Key Bindings**: Vim-style navigation with intuitive pane management
+- **Development-Friendly**: Tailored for coding workflows with proper terminal integration
+
+## Development & Customization
+
+📄 **For developers working on this repository**: See [CLAUDE.md](./CLAUDE.md) for detailed architecture information, development workflows, and customization guidelines.
+
+**Quick customization**:
+1. Edit your local configuration: `<prefix> e` (opens `.tmux.conf.local`)
+2. Reload configuration: `<prefix> r`
+3. Use `#!important` suffix when overriding framework settings
+
+**Resources for tmux beginners**:
+- [Tmux Getting Started Guide](https://github.com/tmux/tmux/wiki/Getting-Started)
+- [Tmux 3: Productive Mouse-Free Development](https://pragprog.com/titles/bhtmux3/tmux-3/) by [@bphogan](https://bphogan.com/)
 
 Troubleshooting
 ---------------
@@ -410,26 +419,19 @@ See the sample `.local` customization file for further instructions.
 
 [TPM]: https://github.com/tmux-plugins/tpm
 
-### Using Oh my tmux! on Windows
+### Platform Support
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/7f84a687-fb4d-4817-a445-419e63ccfac5">
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/7f84a687-fb4d-4817-a445-419e63ccfac5">
-    <img alt="Windows Terminal + WSL" src="https://github.com/user-attachments/assets/7f84a687-fb4d-4817-a445-419e63ccfac5">
-  </picture>
-</p>
+This configuration works on:
+- **Linux** (primary development platform)
+- **macOS** with minor font adjustments
+- **Windows** via WSL or WSL2 (recommended over Cygwin)
 
-⚠️ I don't recommend running this configuration with [Cygwin] anymore. Forking
-under Cygwin is extremely slow and this configuration issues a fair amount
-`run-shell` commands under the hood. As such, you will experience high CPU
-usage.
+---
 
-Instead I recommend [Windows Subsystem for Linux][WSL] along with [Windows
-Terminal]. As an alternative, you may also consider using [Mintty as a terminal
-for WSL][wsltty].
+## About This Repository
 
-[Cygwin]: https://www.cygwin.com
-[WSL]: https://learn.microsoft.com/en-us/windows/wsl
-[wsltty]: https://github.com/mintty/wsltty
-[Windows Terminal]: https://aka.ms/terminal
+This is a personal tmux configuration repository, not the upstream "Oh my tmux!" project. It combines the excellent foundation provided by [Gregory Pakosz's Oh my tmux!](https://github.com/gpakosz/.tmux) with personal customizations and workflow optimizations.
+
+**Upstream Credit**: This configuration is built upon the fantastic work of [@gpakosz](https://github.com/gpakosz) and the "Oh my tmux!" project. Please consider supporting the upstream project.
+
+**License**: Dual licensed under WTFPL v2 and MIT (same as upstream)
