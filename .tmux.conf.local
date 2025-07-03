@@ -407,20 +407,23 @@ tmux_conf_urlscan_options="--compact --dedupe"
 # move status line to top
 #set -g status-position top
 
-# -- copy-paste debugging and enhancements ------------------------------------
+# -- copy-paste debugging and solution ----------------------------------------
 
-# Enhanced copy-paste with debugging
-# Debug logging function - logs to /tmp/tmux-debug.log
-bind-key -T copy-mode-vi y run-shell 'echo "$(date): Copy operation started" >> /tmp/tmux-debug.log; tmux display-message "Copy: checking clipboard tools..."; if [ -n "$DISPLAY" ]; then echo "$(date): DISPLAY is set to: $DISPLAY" >> /tmp/tmux-debug.log; if command -v xsel >/dev/null 2>&1; then echo "$(date): Using xsel for clipboard" >> /tmp/tmux-debug.log; tmux save-buffer - | xsel -i -b && tmux display-message "Copied to clipboard via xsel" || tmux display-message "xsel copy failed"; elif command -v xclip >/dev/null 2>&1; then echo "$(date): Using xclip for clipboard" >> /tmp/tmux-debug.log; tmux save-buffer - | xclip -i -selection clipboard && tmux display-message "Copied to clipboard via xclip" || tmux display-message "xclip copy failed"; else echo "$(date): No clipboard tool available" >> /tmp/tmux-debug.log; tmux display-message "No clipboard tool available"; fi; else echo "$(date): No DISPLAY set, clipboard copy not available" >> /tmp/tmux-debug.log; tmux display-message "No DISPLAY set - clipboard unavailable"; fi; tmux send-keys -X copy-selection-and-cancel' #!important
+# Enable mouse mode for easier copy-paste
+set -g mouse on
 
-# Alternative copy bindings with logging
-bind-key y run-shell 'echo "$(date): Manual copy via y key" >> /tmp/tmux-debug.log; tmux display-message "Copy: DISPLAY=$DISPLAY, tools available:"; if command -v xsel >/dev/null 2>&1; then echo "$(date): xsel available" >> /tmp/tmux-debug.log; tmux display-message "xsel: yes"; else echo "$(date): xsel not available" >> /tmp/tmux-debug.log; tmux display-message "xsel: no"; fi; if command -v xclip >/dev/null 2>&1; then echo "$(date): xclip available" >> /tmp/tmux-debug.log; tmux display-message "xclip: yes"; else echo "$(date): xclip not available" >> /tmp/tmux-debug.log; tmux display-message "xclip: no"; fi' #!important
+# Working copy-paste bindings for headless environment - using safe keys
+bind f1 run-shell 'tmux save-buffer /tmp/tmux-buffer.txt && tmux display-message "✓ Buffer saved to /tmp/tmux-buffer.txt"' #!important
+bind f2 run-shell 'tmux load-buffer /tmp/tmux-buffer.txt && tmux display-message "✓ Buffer loaded from /tmp/tmux-buffer.txt"' #!important
+bind f3 run-shell 'tmux display-message "Environment: DISPLAY=\"$DISPLAY\" | SESSION=\"$XDG_SESSION_TYPE\" | Tools: xsel=$(command -v xsel >/dev/null && echo ✓ || echo ✗) xclip=$(command -v xclip >/dev/null && echo ✓ || echo ✗)"' #!important
+bind f4 run-shell 'touch /tmp/tmux-debug.log && echo "$(date): Debug test entry" >> /tmp/tmux-debug.log && tmux display-message "✓ Debug log updated"' #!important
 
-# Debug key binding to show current environment
-bind-key D run-shell 'echo "=== Debug Info $(date) ===" >> /tmp/tmux-debug.log; echo "DISPLAY=$DISPLAY" >> /tmp/tmux-debug.log; echo "XDG_SESSION_TYPE=$XDG_SESSION_TYPE" >> /tmp/tmux-debug.log; echo "USER=$USER" >> /tmp/tmux-debug.log; echo "HOME=$HOME" >> /tmp/tmux-debug.log; command -v xsel >/dev/null 2>&1 && echo "xsel path: $(command -v xsel)" >> /tmp/tmux-debug.log || echo "xsel: not found" >> /tmp/tmux-debug.log; command -v xclip >/dev/null 2>&1 && echo "xclip path: $(command -v xclip)" >> /tmp/tmux-debug.log || echo "xclip: not found" >> /tmp/tmux-debug.log; tmux display-message "Debug info written to /tmp/tmux-debug.log"' #!important
+# AZERTY keyboard friendly bindings for French users
+bind \; copy-mode #!important
+bind v paste-buffer -p #!important
 
-# Show current copy-paste configuration
-bind-key I run-shell 'tmux display-message "Copy to OS clipboard: $(tmux show-options -g | grep -i copy || echo not-set)"' #!important
+# Enhanced copy mode bindings for file-based copy-paste
+bind-key -T copy-mode-vi 'y' send-keys -X copy-pipe-and-cancel 'tmux save-buffer /tmp/tmux-buffer.txt; tmux display-message "✓ Copied to /tmp/tmux-buffer.txt"' #!important
 
 # -- Alternative copy-paste methods for headless environments ------------------
 
@@ -431,7 +434,13 @@ bind-key S run-shell 'tmux save-buffer /tmp/tmux-buffer-$(date +%Y%m%d-%H%M%S).t
 bind-key L run-shell 'if [ -f /tmp/tmux-buffer-latest.txt ]; then tmux load-buffer /tmp/tmux-buffer-latest.txt && tmux display-message "Buffer loaded from /tmp/tmux-buffer-latest.txt"; else tmux display-message "No buffer file found"; fi' #!important
 
 # Copy to both clipboard and file for maximum compatibility
-bind-key C run-shell 'tmux save-buffer /tmp/tmux-buffer-latest.txt; echo "$(date): Buffer saved to file" >> /tmp/tmux-debug.log; if [ -n "$DISPLAY" ]; then if command -v xsel >/dev/null 2>&1; then tmux save-buffer - | xsel -i -b && tmux display-message "Copied to clipboard AND file" || tmux display-message "Copied to file only (clipboard failed)"; elif command -v xclip >/dev/null 2>&1; then tmux save-buffer - | xclip -i -selection clipboard && tmux display-message "Copied to clipboard AND file" || tmux display-message "Copied to file only (clipboard failed)"; else tmux display-message "Copied to file only (no clipboard tool)"; fi; else tmux display-message "Copied to file only (no DISPLAY)"; fi' #!important
+bind-key C run-shell 'touch /tmp/tmux-debug.log 2>/dev/null || true; tmux save-buffer /tmp/tmux-buffer-latest.txt; echo "$(date): Buffer saved to file" >> /tmp/tmux-debug.log; if [ -n "$DISPLAY" ]; then if command -v xsel >/dev/null 2>&1; then tmux save-buffer - | xsel -i -b && tmux display-message "✓ Copied to clipboard AND file" || tmux display-message "✓ Copied to file only (clipboard failed)"; elif command -v xclip >/dev/null 2>&1; then tmux save-buffer - | xclip -i -selection clipboard && tmux display-message "✓ Copied to clipboard AND file" || tmux display-message "✓ Copied to file only (clipboard failed)"; else tmux display-message "✓ Copied to file only (no clipboard tool)"; fi; else tmux display-message "✓ Copied to file only (no DISPLAY)"; fi' #!important
+
+# View recent debug log entries directly in tmux
+bind-key V run-shell 'if [ -f /tmp/tmux-debug.log ]; then tail -n 5 /tmp/tmux-debug.log | while read line; do tmux display-message "$line"; sleep 1; done; else tmux display-message "No debug log found"; fi' #!important
+
+# Show detailed environment and clipboard status
+bind-key D run-shell 'touch /tmp/tmux-debug.log 2>/dev/null || true; status="Environment: DISPLAY=\"$DISPLAY\" | SESSION=\"$XDG_SESSION_TYPE\" | USER=\"$USER\""; tools="Tools: "; if command -v xsel >/dev/null 2>&1; then tools="$tools xsel=$(command -v xsel)"; else tools="$tools xsel=not-found"; fi; if command -v xclip >/dev/null 2>&1; then tools="$tools | xclip=$(command -v xclip)"; else tools="$tools | xclip=not-found"; fi; tmux display-message "$status"; sleep 2; tmux display-message "$tools"; echo "$(date): Environment check - $status - $tools" >> /tmp/tmux-debug.log' #!important
 
 
 # -- tpm -----------------------------------------------------------------------
