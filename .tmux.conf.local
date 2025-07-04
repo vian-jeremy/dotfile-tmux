@@ -407,40 +407,258 @@ tmux_conf_urlscan_options="--compact --dedupe"
 # move status line to top
 #set -g status-position top
 
-# -- copy-paste debugging and solution ----------------------------------------
+# -- Universal clipboard solution for multi-environment support ---------------
 
 # Enable mouse mode for easier copy-paste
 set -g mouse on
 
-# Working copy-paste bindings for headless environment - using safe keys
+# Environment-aware clipboard detection and fallback system
+# Creates a robust clipboard system that works across:
+# - Desktop environments (asic2login1 with X11)
+# - Headless compute nodes (compute01 without X11)
+# - Customer environments with proxy/firewall restrictions
+# - SSH sessions between different machines
+
+# Smart clipboard copy function with automatic fallback
+# Priority: X11 clipboard > file-based > SSH clipboard forwarding
+bind-key C run-shell '
+  # Create shared clipboard directory if it doesn't exist
+  mkdir -p ~/.config/tmux/clipboard 2>/dev/null || mkdir -p /tmp/tmux-clipboard-$USER 2>/dev/null || true
+  
+  # Determine clipboard directory (prefer user config, fallback to tmp)
+  if [ -d ~/.config/tmux/clipboard ]; then
+    CLIPBOARD_DIR=~/.config/tmux/clipboard
+  else
+    CLIPBOARD_DIR=/tmp/tmux-clipboard-$USER
+    mkdir -p "$CLIPBOARD_DIR" 2>/dev/null || true
+  fi
+  
+  # Save to timestamped file for debugging/history
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  tmux save-buffer "$CLIPBOARD_DIR/buffer-$TIMESTAMP.txt" 2>/dev/null || true
+  
+  # Always save to latest file for cross-session sharing
+  tmux save-buffer "$CLIPBOARD_DIR/buffer-latest.txt" 2>/dev/null || true
+  
+  # Try X11 clipboard first (for desktop environments like asic2login1)
+  if [ -n "$DISPLAY" ]; then
+    if command -v xsel >/dev/null 2>&1; then
+      if tmux save-buffer - | xsel -i -b 2>/dev/null; then
+        tmux display-message "✓ Copied to X11 clipboard + file ($HOSTNAME)"
+        exit 0
+      fi
+    elif command -v xclip >/dev/null 2>&1; then
+      if tmux save-buffer - | xclip -i -selection clipboard 2>/dev/null; then
+        tmux display-message "✓ Copied to X11 clipboard + file ($HOSTNAME)"
+        exit 0
+      fi
+    fi
+  fi
+  
+  # Try Wayland clipboard
+  if [ "$XDG_SESSION_TYPE" = "wayland" ] && command -v wl-copy >/dev/null 2>&1; then
+    if tmux save-buffer - | wl-copy 2>/dev/null; then
+      tmux display-message "✓ Copied to Wayland clipboard + file ($HOSTNAME)"
+      exit 0
+    fi
+  fi
+  
+  # Try SSH clipboard forwarding (if SSH_CLIENT is set)
+  if [ -n "$SSH_CLIENT" ] && [ -n "$SSH_TTY" ]; then
+    # Create a marker file to indicate SSH clipboard attempt
+    touch "$CLIPBOARD_DIR/ssh-clipboard-attempted" 2>/dev/null || true
+    if command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1; then
+      tmux display-message "⚠ SSH session: clipboard saved to file only ($HOSTNAME)"
+    else
+      tmux display-message "⚠ SSH session: clipboard saved to file only ($HOSTNAME)"
+    fi
+  else
+    # Local headless environment (like compute01)
+    tmux display-message "✓ Copied to shared file ($HOSTNAME - headless mode)"
+  fi
+' #!important
+
+# Smart clipboard paste function with automatic source detection
+bind-key V run-shell '
+  # Determine clipboard directory
+  if [ -d ~/.config/tmux/clipboard ]; then
+    CLIPBOARD_DIR=~/.config/tmux/clipboard
+  else
+    CLIPBOARD_DIR=/tmp/tmux-clipboard-$USER
+  fi
+  
+  # Try to paste from X11 clipboard first
+  if [ -n "$DISPLAY" ] && command -v xsel >/dev/null 2>&1; then
+    if content=$(xsel -o -b 2>/dev/null) && [ -n "$content" ]; then
+      printf "%s" "$content" | tmux load-buffer -
+      tmux paste-buffer -p
+      tmux display-message "✓ Pasted from X11 clipboard"
+      exit 0
+    fi
+  elif [ -n "$DISPLAY" ] && command -v xclip >/dev/null 2>&1; then
+    if content=$(xclip -o -selection clipboard 2>/dev/null) && [ -n "$content" ]; then
+      printf "%s" "$content" | tmux load-buffer -
+      tmux paste-buffer -p
+      tmux display-message "✓ Pasted from X11 clipboard"
+      exit 0
+    fi
+  fi
+  
+  # Try Wayland clipboard
+  if [ "$XDG_SESSION_TYPE" = "wayland" ] && command -v wl-paste >/dev/null 2>&1; then
+    if content=$(wl-paste 2>/dev/null) && [ -n "$content" ]; then
+      printf "%s" "$content" | tmux load-buffer -
+      tmux paste-buffer -p
+      tmux display-message "✓ Pasted from Wayland clipboard"
+      exit 0
+    fi
+  fi
+  
+  # Fallback to file-based clipboard
+  if [ -f "$CLIPBOARD_DIR/buffer-latest.txt" ]; then
+    tmux load-buffer "$CLIPBOARD_DIR/buffer-latest.txt"
+    tmux paste-buffer -p
+    tmux display-message "✓ Pasted from shared file"
+  else
+    tmux display-message "✗ No clipboard content found"
+  fi
+' #!important
+
+# Copy mode integration - make y key use smart clipboard
+bind-key -T copy-mode-vi y send-keys -X copy-pipe-and-cancel '
+  # Same logic as smart clipboard copy
+  mkdir -p ~/.config/tmux/clipboard 2>/dev/null || mkdir -p /tmp/tmux-clipboard-$USER 2>/dev/null || true
+  
+  if [ -d ~/.config/tmux/clipboard ]; then
+    CLIPBOARD_DIR=~/.config/tmux/clipboard
+  else
+    CLIPBOARD_DIR=/tmp/tmux-clipboard-$USER
+    mkdir -p "$CLIPBOARD_DIR" 2>/dev/null || true
+  fi
+  
+  # Save to file and try clipboard
+  tee "$CLIPBOARD_DIR/buffer-latest.txt" | (
+    if [ -n "$DISPLAY" ]; then
+      if command -v xsel >/dev/null 2>&1; then
+        xsel -i -b 2>/dev/null && tmux display-message "✓ Copied to X11 clipboard + file"
+      elif command -v xclip >/dev/null 2>&1; then
+        xclip -i -selection clipboard 2>/dev/null && tmux display-message "✓ Copied to X11 clipboard + file"
+      else
+        tmux display-message "✓ Copied to file only (no clipboard tool)"
+      fi
+    elif [ "$XDG_SESSION_TYPE" = "wayland" ] && command -v wl-copy >/dev/null 2>&1; then
+      wl-copy 2>/dev/null && tmux display-message "✓ Copied to Wayland clipboard + file"
+    else
+      tmux display-message "✓ Copied to file only (headless mode)"
+    fi
+  )
+' #!important
+
+# -- Environment debugging and status commands ---------------------------------
+
+# Show detailed clipboard environment status
+bind-key D run-shell '
+  echo "=== TMUX CLIPBOARD ENVIRONMENT STATUS ===" > /tmp/tmux-clipboard-debug.log
+  echo "Date: $(date)" >> /tmp/tmux-clipboard-debug.log
+  echo "Host: $HOSTNAME" >> /tmp/tmux-clipboard-debug.log
+  echo "User: $USER" >> /tmp/tmux-clipboard-debug.log
+  echo "DISPLAY: $DISPLAY" >> /tmp/tmux-clipboard-debug.log
+  echo "XDG_SESSION_TYPE: $XDG_SESSION_TYPE" >> /tmp/tmux-clipboard-debug.log
+  echo "SSH_CLIENT: $SSH_CLIENT" >> /tmp/tmux-clipboard-debug.log
+  echo "SSH_TTY: $SSH_TTY" >> /tmp/tmux-clipboard-debug.log
+  echo "" >> /tmp/tmux-clipboard-debug.log
+  echo "Available tools:" >> /tmp/tmux-clipboard-debug.log
+  command -v xsel >/dev/null 2>&1 && echo "✓ xsel: $(command -v xsel)" >> /tmp/tmux-clipboard-debug.log || echo "✗ xsel: not found" >> /tmp/tmux-clipboard-debug.log
+  command -v xclip >/dev/null 2>&1 && echo "✓ xclip: $(command -v xclip)" >> /tmp/tmux-clipboard-debug.log || echo "✗ xclip: not found" >> /tmp/tmux-clipboard-debug.log
+  command -v wl-copy >/dev/null 2>&1 && echo "✓ wl-copy: $(command -v wl-copy)" >> /tmp/tmux-clipboard-debug.log || echo "✗ wl-copy: not found" >> /tmp/tmux-clipboard-debug.log
+  echo "" >> /tmp/tmux-clipboard-debug.log
+  
+  # Test X11 clipboard access
+  if [ -n "$DISPLAY" ]; then
+    if command -v xsel >/dev/null 2>&1; then
+      if echo "test" | xsel -i -b 2>/dev/null; then
+        echo "✓ X11 clipboard (xsel): WORKING" >> /tmp/tmux-clipboard-debug.log
+      else
+        echo "✗ X11 clipboard (xsel): FAILED" >> /tmp/tmux-clipboard-debug.log
+      fi
+    elif command -v xclip >/dev/null 2>&1; then
+      if echo "test" | xclip -i -selection clipboard 2>/dev/null; then
+        echo "✓ X11 clipboard (xclip): WORKING" >> /tmp/tmux-clipboard-debug.log
+      else
+        echo "✗ X11 clipboard (xclip): FAILED" >> /tmp/tmux-clipboard-debug.log
+      fi
+    fi
+  else
+    echo "✗ X11 clipboard: No DISPLAY" >> /tmp/tmux-clipboard-debug.log
+  fi
+  
+  # Show clipboard directory
+  if [ -d ~/.config/tmux/clipboard ]; then
+    echo "✓ Clipboard dir: ~/.config/tmux/clipboard" >> /tmp/tmux-clipboard-debug.log
+  else
+    echo "✓ Clipboard dir: /tmp/tmux-clipboard-$USER" >> /tmp/tmux-clipboard-debug.log
+  fi
+  
+  # Show recent clipboard files
+  echo "" >> /tmp/tmux-clipboard-debug.log
+  echo "Recent clipboard files:" >> /tmp/tmux-clipboard-debug.log
+  if [ -d ~/.config/tmux/clipboard ]; then
+    ls -la ~/.config/tmux/clipboard/ 2>/dev/null >> /tmp/tmux-clipboard-debug.log || echo "No files found" >> /tmp/tmux-clipboard-debug.log
+  else
+    ls -la /tmp/tmux-clipboard-$USER/ 2>/dev/null >> /tmp/tmux-clipboard-debug.log || echo "No files found" >> /tmp/tmux-clipboard-debug.log
+  fi
+  
+  # Display the debug info
+  tmux display-message "Environment debug info saved to /tmp/tmux-clipboard-debug.log"
+  tmux new-window -n "clipboard-debug" "less /tmp/tmux-clipboard-debug.log"
+' #!important
+
+# Quick clipboard status check
+bind-key \; run-shell '
+  if [ -n "$DISPLAY" ]; then
+    if command -v xsel >/dev/null 2>&1 || command -v xclip >/dev/null 2>&1; then
+      tmux display-message "✓ Desktop mode: X11 clipboard available ($HOSTNAME)"
+    else
+      tmux display-message "⚠ Desktop mode: X11 clipboard tools missing ($HOSTNAME)"
+    fi
+  else
+    tmux display-message "✓ Headless mode: File-based clipboard active ($HOSTNAME)"
+  fi
+' #!important
+
+# -- Legacy compatibility bindings ---------------------------------------------
+
+# Keep existing F-key bindings for backward compatibility
 bind f1 run-shell 'tmux save-buffer /tmp/tmux-buffer.txt && tmux display-message "✓ Buffer saved to /tmp/tmux-buffer.txt"' #!important
 bind f2 run-shell 'tmux load-buffer /tmp/tmux-buffer.txt && tmux display-message "✓ Buffer loaded from /tmp/tmux-buffer.txt"' #!important
-bind f3 run-shell 'tmux display-message "Environment: DISPLAY=\"$DISPLAY\" | SESSION=\"$XDG_SESSION_TYPE\" | Tools: xsel=$(command -v xsel >/dev/null && echo ✓ || echo ✗) xclip=$(command -v xclip >/dev/null && echo ✓ || echo ✗)"' #!important
-bind f4 run-shell 'touch /tmp/tmux-debug.log && echo "$(date): Debug test entry" >> /tmp/tmux-debug.log && tmux display-message "✓ Debug log updated"' #!important
 
-# AZERTY keyboard friendly bindings for French users
-bind \; copy-mode #!important
+# AZERTY keyboard friendly bindings
 bind v paste-buffer -p #!important
 
-# Enhanced copy mode bindings for file-based copy-paste
-bind-key -T copy-mode-vi 'y' send-keys -X copy-pipe-and-cancel 'tmux save-buffer /tmp/tmux-buffer.txt; tmux display-message "✓ Copied to /tmp/tmux-buffer.txt"' #!important
+# Clipboard help/cheatsheet
+bind-key ? run-shell 'tmux display-message "
+═══ TMUX CLIPBOARD KEYBINDINGS ═══
+💾 Universal Clipboard:
+  <prefix> C  - Smart copy (auto-detects best method)
+  <prefix> V  - Smart paste (auto-detects source)
+  y (in copy) - Smart copy in copy-mode
 
-# -- Alternative copy-paste methods for headless environments ------------------
+🔍 Status & Debug:
+  <prefix> ;  - Quick environment status
+  <prefix> D  - Detailed debug info (opens new window)
 
-# Save buffer to file as fallback when clipboard unavailable
-bind-key S run-shell 'tmux save-buffer /tmp/tmux-buffer-$(date +%Y%m%d-%H%M%S).txt && tmux display-message "Buffer saved to /tmp/tmux-buffer-$(date +%Y%m%d-%H%M%S).txt"' #!important
+📁 Legacy/Manual:
+  <prefix> f1 - Save to /tmp/tmux-buffer.txt  
+  <prefix> f2 - Load from /tmp/tmux-buffer.txt
+  <prefix> v  - Paste buffer
 
-# Load buffer from file  
-bind-key L run-shell 'if [ -f /tmp/tmux-buffer-latest.txt ]; then tmux load-buffer /tmp/tmux-buffer-latest.txt && tmux display-message "Buffer loaded from /tmp/tmux-buffer-latest.txt"; else tmux display-message "No buffer file found"; fi' #!important
+🌐 How it works:
+• Desktop (X11): Copies to system clipboard + file
+• Headless: Copies to shared file only
+• Cross-machine: Use shared file in ~/.config/tmux/clipboard/
+• File location: ~/.config/tmux/clipboard/ or /tmp/tmux-clipboard-$USER/
 
-# Copy to both clipboard and file for maximum compatibility
-bind-key C run-shell 'touch /tmp/tmux-debug.log 2>/dev/null || true; tmux save-buffer /tmp/tmux-buffer-latest.txt; echo "$(date): Buffer saved to file" >> /tmp/tmux-debug.log; if [ -n "$DISPLAY" ]; then if command -v xsel >/dev/null 2>&1; then tmux save-buffer - | xsel -i -b && tmux display-message "✓ Copied to clipboard AND file" || tmux display-message "✓ Copied to file only (clipboard failed)"; elif command -v xclip >/dev/null 2>&1; then tmux save-buffer - | xclip -i -selection clipboard && tmux display-message "✓ Copied to clipboard AND file" || tmux display-message "✓ Copied to file only (clipboard failed)"; else tmux display-message "✓ Copied to file only (no clipboard tool)"; fi; else tmux display-message "✓ Copied to file only (no DISPLAY)"; fi' #!important
-
-# View recent debug log entries directly in tmux
-bind-key V run-shell 'if [ -f /tmp/tmux-debug.log ]; then tail -n 5 /tmp/tmux-debug.log | while read line; do tmux display-message "$line"; sleep 1; done; else tmux display-message "No debug log found"; fi' #!important
-
-# Show detailed environment and clipboard status
-bind-key D run-shell 'touch /tmp/tmux-debug.log 2>/dev/null || true; status="Environment: DISPLAY=\"$DISPLAY\" | SESSION=\"$XDG_SESSION_TYPE\" | USER=\"$USER\""; tools="Tools: "; if command -v xsel >/dev/null 2>&1; then tools="$tools xsel=$(command -v xsel)"; else tools="$tools xsel=not-found"; fi; if command -v xclip >/dev/null 2>&1; then tools="$tools | xclip=$(command -v xclip)"; else tools="$tools | xclip=not-found"; fi; tmux display-message "$status"; sleep 2; tmux display-message "$tools"; echo "$(date): Environment check - $status - $tools" >> /tmp/tmux-debug.log' #!important
+Press any key to continue..."' #!important
 
 
 # -- tpm -----------------------------------------------------------------------
