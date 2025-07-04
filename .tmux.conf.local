@@ -66,10 +66,9 @@ tmux_conf_new_pane_reconnect_ssh=false
 #   - false
 #   - auto (default)
 #
-# automatic detection relies on the COLORTERM environment variable being defined
-# to 'truecolor' or '24bit' or '$ tput colors' answering '16777216'
-# see https://github.com/termstandard/colors
-tmux_conf_24b_colour=auto
+# Force compatibility mode for customer sites where COLORTERM might not be set
+# This ensures themes work on both desktop and headless environments
+tmux_conf_24b_colour=false
 
 
 # -- theming -------------------------------------------------------------------
@@ -85,43 +84,44 @@ tmux_conf_24b_colour=auto
 #   - tmux_conf_theme_synchronized
 tmux_conf_theme=enabled
 
-# default theme
-tmux_conf_theme_colour_1="#080808"    # dark gray
-tmux_conf_theme_colour_2="#303030"    # gray
-tmux_conf_theme_colour_3="#8a8a8a"    # light gray
-tmux_conf_theme_colour_4="#00afff"    # light blue
-tmux_conf_theme_colour_5="#ffff00"    # yellow
-tmux_conf_theme_colour_6="#080808"    # dark gray
-tmux_conf_theme_colour_7="#e4e4e4"    # white
-tmux_conf_theme_colour_8="#080808"    # dark gray
-tmux_conf_theme_colour_9="#ffff00"    # yellow
-tmux_conf_theme_colour_10="#ff00af"   # pink
-tmux_conf_theme_colour_11="#5fff00"   # green
-tmux_conf_theme_colour_12="#8a8a8a"   # light gray
-tmux_conf_theme_colour_13="#e4e4e4"   # white
-tmux_conf_theme_colour_14="#080808"   # dark gray
-tmux_conf_theme_colour_15="#080808"   # dark gray
-tmux_conf_theme_colour_16="#d70000"   # red
-tmux_conf_theme_colour_17="#e4e4e4"   # white
+# default theme (compatible with all environments)
+# Using ANSI colors instead of hex for better compatibility
+tmux_conf_theme_colour_1="colour0"      # black
+tmux_conf_theme_colour_2="colour8"      # dark gray  
+tmux_conf_theme_colour_3="colour7"      # light gray
+tmux_conf_theme_colour_4="colour12"     # bright blue
+tmux_conf_theme_colour_5="colour11"     # bright yellow
+tmux_conf_theme_colour_6="colour0"      # black
+tmux_conf_theme_colour_7="colour15"     # bright white
+tmux_conf_theme_colour_8="colour0"      # black
+tmux_conf_theme_colour_9="colour11"     # bright yellow
+tmux_conf_theme_colour_10="colour13"    # bright magenta
+tmux_conf_theme_colour_11="colour10"    # bright green
+tmux_conf_theme_colour_12="colour7"     # light gray
+tmux_conf_theme_colour_13="colour15"    # bright white
+tmux_conf_theme_colour_14="colour0"     # black
+tmux_conf_theme_colour_15="colour8"     # dark gray
+tmux_conf_theme_colour_16="colour1"     # red
+tmux_conf_theme_colour_17="colour15"    # bright white
 
-# default theme (ansi)
-#tmux_conf_theme_colour_1="colour0"
-#tmux_conf_theme_colour_2="colour8"
-#tmux_conf_theme_colour_3="colour8"
-#tmux_conf_theme_colour_4="colour14"
-#tmux_conf_theme_colour_5="colour11"
-#tmux_conf_theme_colour_6="colour0"
-#tmux_conf_theme_colour_7="colour15"
-#tmux_conf_theme_colour_8="colour0"
-#tmux_conf_theme_colour_9="colour11"
-#tmux_conf_theme_colour_10="colour13"
-#tmux_conf_theme_colour_11="colour10"
-#tmux_conf_theme_colour_12="colour8"
-#tmux_conf_theme_colour_13="colour15"
-#tmux_conf_theme_colour_14="colour0"
-#tmux_conf_theme_colour_15="colour0"
-#tmux_conf_theme_colour_16="colour1"
-#tmux_conf_theme_colour_17="colour15"
+# Legacy hex theme (for reference - use when 24-bit color is available)
+#tmux_conf_theme_colour_1="#080808"    # dark gray
+#tmux_conf_theme_colour_2="#303030"    # gray
+#tmux_conf_theme_colour_3="#8a8a8a"    # light gray
+#tmux_conf_theme_colour_4="#00afff"    # light blue
+#tmux_conf_theme_colour_5="#ffff00"    # yellow
+#tmux_conf_theme_colour_6="#080808"    # dark gray
+#tmux_conf_theme_colour_7="#e4e4e4"    # white
+#tmux_conf_theme_colour_8="#080808"    # dark gray
+#tmux_conf_theme_colour_9="#ffff00"    # yellow
+#tmux_conf_theme_colour_10="#ff00af"   # pink
+#tmux_conf_theme_colour_11="#5fff00"   # green
+#tmux_conf_theme_colour_12="#8a8a8a"   # light gray
+#tmux_conf_theme_colour_13="#e4e4e4"   # white
+#tmux_conf_theme_colour_14="#080808"   # dark gray
+#tmux_conf_theme_colour_15="#080808"   # dark gray
+#tmux_conf_theme_colour_16="#d70000"   # red
+#tmux_conf_theme_colour_17="#e4e4e4"   # white
 
 # window style
 tmux_conf_theme_window_fg="default"
@@ -419,212 +419,22 @@ set -g mouse on
 # - Customer environments with proxy/firewall restrictions
 # - SSH sessions between different machines
 
-# Smart clipboard copy function with automatic fallback
-# Priority: X11 clipboard > file-based > SSH clipboard forwarding
-bind-key C run-shell '
-  # Create shared clipboard directory if it doesn't exist
-  mkdir -p ~/.config/tmux/clipboard 2>/dev/null || mkdir -p /tmp/tmux-clipboard-$USER 2>/dev/null || true
-  
-  # Determine clipboard directory (prefer user config, fallback to tmp)
-  if [ -d ~/.config/tmux/clipboard ]; then
-    CLIPBOARD_DIR=~/.config/tmux/clipboard
-  else
-    CLIPBOARD_DIR=/tmp/tmux-clipboard-$USER
-    mkdir -p "$CLIPBOARD_DIR" 2>/dev/null || true
-  fi
-  
-  # Save to timestamped file for debugging/history
-  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-  tmux save-buffer "$CLIPBOARD_DIR/buffer-$TIMESTAMP.txt" 2>/dev/null || true
-  
-  # Always save to latest file for cross-session sharing
-  tmux save-buffer "$CLIPBOARD_DIR/buffer-latest.txt" 2>/dev/null || true
-  
-  # Try X11 clipboard first (for desktop environments like asic2login1)
-  if [ -n "$DISPLAY" ]; then
-    if command -v xsel >/dev/null 2>&1; then
-      if tmux save-buffer - | xsel -i -b 2>/dev/null; then
-        tmux display-message "✓ Copied to X11 clipboard + file ($HOSTNAME)"
-        exit 0
-      fi
-    elif command -v xclip >/dev/null 2>&1; then
-      if tmux save-buffer - | xclip -i -selection clipboard 2>/dev/null; then
-        tmux display-message "✓ Copied to X11 clipboard + file ($HOSTNAME)"
-        exit 0
-      fi
-    fi
-  fi
-  
-  # Try Wayland clipboard
-  if [ "$XDG_SESSION_TYPE" = "wayland" ] && command -v wl-copy >/dev/null 2>&1; then
-    if tmux save-buffer - | wl-copy 2>/dev/null; then
-      tmux display-message "✓ Copied to Wayland clipboard + file ($HOSTNAME)"
-      exit 0
-    fi
-  fi
-  
-  # Try SSH clipboard forwarding (if SSH_CLIENT is set)
-  if [ -n "$SSH_CLIENT" ] && [ -n "$SSH_TTY" ]; then
-    # Create a marker file to indicate SSH clipboard attempt
-    touch "$CLIPBOARD_DIR/ssh-clipboard-attempted" 2>/dev/null || true
-    if command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1; then
-      tmux display-message "⚠ SSH session: clipboard saved to file only ($HOSTNAME)"
-    else
-      tmux display-message "⚠ SSH session: clipboard saved to file only ($HOSTNAME)"
-    fi
-  else
-    # Local headless environment (like compute01)
-    tmux display-message "✓ Copied to shared file ($HOSTNAME - headless mode)"
-  fi
-' #!important
+# Smart clipboard copy using external script
+bind-key C run-shell 'tmux-clipboard-copy' #!important
 
-# Smart clipboard paste function with automatic source detection
-bind-key V run-shell '
-  # Determine clipboard directory
-  if [ -d ~/.config/tmux/clipboard ]; then
-    CLIPBOARD_DIR=~/.config/tmux/clipboard
-  else
-    CLIPBOARD_DIR=/tmp/tmux-clipboard-$USER
-  fi
-  
-  # Try to paste from X11 clipboard first
-  if [ -n "$DISPLAY" ] && command -v xsel >/dev/null 2>&1; then
-    if content=$(xsel -o -b 2>/dev/null) && [ -n "$content" ]; then
-      printf "%s" "$content" | tmux load-buffer -
-      tmux paste-buffer -p
-      tmux display-message "✓ Pasted from X11 clipboard"
-      exit 0
-    fi
-  elif [ -n "$DISPLAY" ] && command -v xclip >/dev/null 2>&1; then
-    if content=$(xclip -o -selection clipboard 2>/dev/null) && [ -n "$content" ]; then
-      printf "%s" "$content" | tmux load-buffer -
-      tmux paste-buffer -p
-      tmux display-message "✓ Pasted from X11 clipboard"
-      exit 0
-    fi
-  fi
-  
-  # Try Wayland clipboard
-  if [ "$XDG_SESSION_TYPE" = "wayland" ] && command -v wl-paste >/dev/null 2>&1; then
-    if content=$(wl-paste 2>/dev/null) && [ -n "$content" ]; then
-      printf "%s" "$content" | tmux load-buffer -
-      tmux paste-buffer -p
-      tmux display-message "✓ Pasted from Wayland clipboard"
-      exit 0
-    fi
-  fi
-  
-  # Fallback to file-based clipboard
-  if [ -f "$CLIPBOARD_DIR/buffer-latest.txt" ]; then
-    tmux load-buffer "$CLIPBOARD_DIR/buffer-latest.txt"
-    tmux paste-buffer -p
-    tmux display-message "✓ Pasted from shared file"
-  else
-    tmux display-message "✗ No clipboard content found"
-  fi
-' #!important
+# Smart clipboard paste using external script
+bind-key V run-shell 'tmux-clipboard-paste' #!important
 
-# Copy mode integration - make y key use smart clipboard
-bind-key -T copy-mode-vi y send-keys -X copy-pipe-and-cancel '
-  # Same logic as smart clipboard copy
-  mkdir -p ~/.config/tmux/clipboard 2>/dev/null || mkdir -p /tmp/tmux-clipboard-$USER 2>/dev/null || true
-  
-  if [ -d ~/.config/tmux/clipboard ]; then
-    CLIPBOARD_DIR=~/.config/tmux/clipboard
-  else
-    CLIPBOARD_DIR=/tmp/tmux-clipboard-$USER
-    mkdir -p "$CLIPBOARD_DIR" 2>/dev/null || true
-  fi
-  
-  # Save to file and try clipboard
-  tee "$CLIPBOARD_DIR/buffer-latest.txt" | (
-    if [ -n "$DISPLAY" ]; then
-      if command -v xsel >/dev/null 2>&1; then
-        xsel -i -b 2>/dev/null && tmux display-message "✓ Copied to X11 clipboard + file"
-      elif command -v xclip >/dev/null 2>&1; then
-        xclip -i -selection clipboard 2>/dev/null && tmux display-message "✓ Copied to X11 clipboard + file"
-      else
-        tmux display-message "✓ Copied to file only (no clipboard tool)"
-      fi
-    elif [ "$XDG_SESSION_TYPE" = "wayland" ] && command -v wl-copy >/dev/null 2>&1; then
-      wl-copy 2>/dev/null && tmux display-message "✓ Copied to Wayland clipboard + file"
-    else
-      tmux display-message "✓ Copied to file only (headless mode)"
-    fi
-  )
-' #!important
+# Copy mode integration using external script
+bind-key -T copy-mode-vi y send-keys -X copy-pipe-and-cancel 'tmux-clipboard-copy --copy-mode' #!important
 
 # -- Environment debugging and status commands ---------------------------------
 
-# Show detailed clipboard environment status
-bind-key D run-shell '
-  echo "=== TMUX CLIPBOARD ENVIRONMENT STATUS ===" > /tmp/tmux-clipboard-debug.log
-  echo "Date: $(date)" >> /tmp/tmux-clipboard-debug.log
-  echo "Host: $HOSTNAME" >> /tmp/tmux-clipboard-debug.log
-  echo "User: $USER" >> /tmp/tmux-clipboard-debug.log
-  echo "DISPLAY: $DISPLAY" >> /tmp/tmux-clipboard-debug.log
-  echo "XDG_SESSION_TYPE: $XDG_SESSION_TYPE" >> /tmp/tmux-clipboard-debug.log
-  echo "SSH_CLIENT: $SSH_CLIENT" >> /tmp/tmux-clipboard-debug.log
-  echo "SSH_TTY: $SSH_TTY" >> /tmp/tmux-clipboard-debug.log
-  echo "" >> /tmp/tmux-clipboard-debug.log
-  echo "Available tools:" >> /tmp/tmux-clipboard-debug.log
-  command -v xsel >/dev/null 2>&1 && echo "✓ xsel: $(command -v xsel)" >> /tmp/tmux-clipboard-debug.log || echo "✗ xsel: not found" >> /tmp/tmux-clipboard-debug.log
-  command -v xclip >/dev/null 2>&1 && echo "✓ xclip: $(command -v xclip)" >> /tmp/tmux-clipboard-debug.log || echo "✗ xclip: not found" >> /tmp/tmux-clipboard-debug.log
-  command -v wl-copy >/dev/null 2>&1 && echo "✓ wl-copy: $(command -v wl-copy)" >> /tmp/tmux-clipboard-debug.log || echo "✗ wl-copy: not found" >> /tmp/tmux-clipboard-debug.log
-  echo "" >> /tmp/tmux-clipboard-debug.log
-  
-  # Test X11 clipboard access
-  if [ -n "$DISPLAY" ]; then
-    if command -v xsel >/dev/null 2>&1; then
-      if echo "test" | xsel -i -b 2>/dev/null; then
-        echo "✓ X11 clipboard (xsel): WORKING" >> /tmp/tmux-clipboard-debug.log
-      else
-        echo "✗ X11 clipboard (xsel): FAILED" >> /tmp/tmux-clipboard-debug.log
-      fi
-    elif command -v xclip >/dev/null 2>&1; then
-      if echo "test" | xclip -i -selection clipboard 2>/dev/null; then
-        echo "✓ X11 clipboard (xclip): WORKING" >> /tmp/tmux-clipboard-debug.log
-      else
-        echo "✗ X11 clipboard (xclip): FAILED" >> /tmp/tmux-clipboard-debug.log
-      fi
-    fi
-  else
-    echo "✗ X11 clipboard: No DISPLAY" >> /tmp/tmux-clipboard-debug.log
-  fi
-  
-  # Show clipboard directory
-  if [ -d ~/.config/tmux/clipboard ]; then
-    echo "✓ Clipboard dir: ~/.config/tmux/clipboard" >> /tmp/tmux-clipboard-debug.log
-  else
-    echo "✓ Clipboard dir: /tmp/tmux-clipboard-$USER" >> /tmp/tmux-clipboard-debug.log
-  fi
-  
-  # Show recent clipboard files
-  echo "" >> /tmp/tmux-clipboard-debug.log
-  echo "Recent clipboard files:" >> /tmp/tmux-clipboard-debug.log
-  if [ -d ~/.config/tmux/clipboard ]; then
-    ls -la ~/.config/tmux/clipboard/ 2>/dev/null >> /tmp/tmux-clipboard-debug.log || echo "No files found" >> /tmp/tmux-clipboard-debug.log
-  else
-    ls -la /tmp/tmux-clipboard-$USER/ 2>/dev/null >> /tmp/tmux-clipboard-debug.log || echo "No files found" >> /tmp/tmux-clipboard-debug.log
-  fi
-  
-  # Display the debug info
-  tmux display-message "Environment debug info saved to /tmp/tmux-clipboard-debug.log"
-  tmux new-window -n "clipboard-debug" "less /tmp/tmux-clipboard-debug.log"
-' #!important
+# Debug clipboard environment using external script
+bind-key D run-shell 'tmux-clipboard-debug' #!important
 
-# Quick clipboard status check
-bind-key \; run-shell '
-  if [ -n "$DISPLAY" ]; then
-    if command -v xsel >/dev/null 2>&1 || command -v xclip >/dev/null 2>&1; then
-      tmux display-message "✓ Desktop mode: X11 clipboard available ($HOSTNAME)"
-    else
-      tmux display-message "⚠ Desktop mode: X11 clipboard tools missing ($HOSTNAME)"
-    fi
-  else
-    tmux display-message "✓ Headless mode: File-based clipboard active ($HOSTNAME)"
-  fi
-' #!important
+# Quick clipboard status using external script
+bind-key \; run-shell 'tmux-clipboard-status --brief' #!important
 
 # -- Legacy compatibility bindings ---------------------------------------------
 
@@ -635,30 +445,8 @@ bind f2 run-shell 'tmux load-buffer /tmp/tmux-buffer.txt && tmux display-message
 # AZERTY keyboard friendly bindings
 bind v paste-buffer -p #!important
 
-# Clipboard help/cheatsheet
-bind-key ? run-shell 'tmux display-message "
-═══ TMUX CLIPBOARD KEYBINDINGS ═══
-💾 Universal Clipboard:
-  <prefix> C  - Smart copy (auto-detects best method)
-  <prefix> V  - Smart paste (auto-detects source)
-  y (in copy) - Smart copy in copy-mode
-
-🔍 Status & Debug:
-  <prefix> ;  - Quick environment status
-  <prefix> D  - Detailed debug info (opens new window)
-
-📁 Legacy/Manual:
-  <prefix> f1 - Save to /tmp/tmux-buffer.txt  
-  <prefix> f2 - Load from /tmp/tmux-buffer.txt
-  <prefix> v  - Paste buffer
-
-🌐 How it works:
-• Desktop (X11): Copies to system clipboard + file
-• Headless: Copies to shared file only
-• Cross-machine: Use shared file in ~/.config/tmux/clipboard/
-• File location: ~/.config/tmux/clipboard/ or /tmp/tmux-clipboard-$USER/
-
-Press any key to continue..."' #!important
+# Clipboard help using external script
+bind-key ? run-shell 'tmux-clipboard-help' #!important
 
 
 # -- tpm -----------------------------------------------------------------------
