@@ -1,0 +1,8 @@
+#!/bin/sh
+# Facebook PathPicker integration for tmux
+
+pane_id="$1"
+pane_path="$2"
+
+tmux capture-pane -J -S - -E - -b "fpp-$pane_id" -t "$pane_id"
+tmux split-window -c "$pane_path" "'$TMUX_PROGRAM' ${TMUX_SOCKET:+-S \"$TMUX_SOCKET\"} show-buffer -b 'fpp-$pane_id' | fpp || true; '$TMUX_PROGRAM' ${TMUX_SOCKET:+-S \"$TMUX_SOCKET\"} delete-buffer -b 'fpp-$pane_id'"

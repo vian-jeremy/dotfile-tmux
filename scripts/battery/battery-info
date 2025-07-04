@@ -1,0 +1,74 @@
+#!/bin/sh
+# Extracted script from tmux configuration - Battery info
+
+battery_count=0
+battery_charge=0
+  case "$_uname_s" in
+    *Darwin*)
+      while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        percentage=$(printf '%s' "$line" | grep -E -o '[0-9]+%' || echo "0%")
+        battery_charge=$(awk -v charge="$battery_charge" -v percentage="${percentage%%%}" 'BEGIN { print charge + percentage / 100 }')
+        battery_count=$((battery_count + 1))
+      done  << EOF
+$(pmset -g batt | grep 'InternalBattery')
+EOF
+      ;;
+    *Linux*)
+      while IFS= read -r batpath; do
+        [ -z "$batpath" ] && continue
+        grep -i -q device "$batpath/scope" 2> /dev/null && continue
+#
+        bat_capacity="$batpath/capacity"
+        if [ -r "$bat_capacity" ]; then
+          battery_charge=$(awk -v charge="$battery_charge" -v capacity="$(cat "$bat_capacity")" 'BEGIN { print charge + (capacity > 100 ? 100 : capacity) / 100 }')
+        else
+          bat_energy_full="$batpath/energy_full"
+          bat_energy_now="$batpath/energy_now"
+          if [ -r "$bat_energy_full" ] && [ -r "$bat_energy_now" ]; then
+            battery_charge=$(awk -v charge="$battery_charge" -v energy_now="$(cat "$bat_energy_now")" -v energy_full="$(cat "$bat_energy_full")" 'BEGIN { print charge + energy_now / energy_full }')
+          fi
+        fi
+        battery_count=$((battery_count + 1))
+      done  << EOF
+$(find /sys/class/power_supply -maxdepth 1 -iname '*bat*')
+EOF
+      ;;
+    *CYGWIN*|*MSYS*|*MINGW*)
+      while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        battery_charge=$(printf '%s' "$line" | awk -v charge="$battery_charge" '{ print charge + $2 / 100 }')
+        battery_count=$((battery_count + 1))
+      done  << EOF
+$(wmic path Win32_Battery get BatteryStatus, EstimatedChargeRemaining 2> /dev/null | tr -d '\r' | tail -n +2 || true)
+EOF
+      ;;
+    *OpenBSD*)
+      for batid in 0 1 2; do
+        sysctl -n "hw.sensors.acpibat$batid.raw0" 2>&1 | grep -q 'not found' && continue
+        if sysctl -n "hw.sensors.acpibat$batid" | grep -q amphour; then
+          battery_charge=$(awk -v charge="$battery_charge" -v remaining="$(sysctl -n hw.sensors.acpibat$batid.amphour3 | cut -d' ' -f1)" -v full="$(sysctl -n hw.sensors.acpibat$batid.amphour0 | cut -d' ' -f1)" 'BEGIN { print charge + remaining / full }')
+        else
+          battery_charge=$(awk -v charge="$battery_charge" -v remaining="$(sysctl -n hw.sensors.acpibat$batid.watthour3 | cut -d' ' -f1)" -v full="$(sysctl -n hw.sensors.acpibat$batid.watthour0 | cut -d' ' -f1)" 'BEGIN { print charge + remaining / full }')
+        fi
+        battery_count=$((battery_count + 1))
+      done
+      ;;
+    *FreeBSD*)
+      battery_charge=$(awk -v charge="$(sysctl -n 'hw.acpi.battery.life')" 'BEGIN { print charge / 100 }')
+      battery_count=1
+      ;;
+  esac
+  if [ "$battery_count" -ne 0 ]; then
+    battery_charge=$(awk -v charge="$battery_charge" -v count="$battery_count" 'BEGIN { print charge / count }')
+  fi
+#
+  if [ "$battery_charge" = 0 ]; then
+    tmux  set -ug '@battery_percentage' \;\
+          set -ug '@battery_charge'
+  else
+    battery_percentage="$(awk "BEGIN { printf \"%.0f%%\", ($battery_charge) * 100 }")"
+#
+    tmux  set -g '@battery_percentage' "$battery_percentage" \;\
+          set -g '@battery_charge' "$battery_charge"
+  fi

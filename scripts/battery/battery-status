@@ -1,0 +1,55 @@
+#!/bin/sh
+# Extracted script from tmux configuration - Battery status
+
+battery_status_charging=$1
+battery_status_discharging=$2
+
+case "$_uname_s" in
+  *Darwin*)
+    while IFS= read -r line; do
+      [ -z "$line" ] && continue
+      battery_discharging=$(printf '%s' "$line" | grep -qi "discharging" && echo "true" || echo "false")
+    done  << EOF
+$(pmset -g batt | grep 'InternalBattery')
+EOF
+    ;;
+  *Linux*)
+    while IFS= read -r batpath; do
+      [ -z "$batpath" ] && continue
+      grep -i -q device "$batpath/scope" 2> /dev/null && continue
+
+      battery_discharging=$(grep -qi "discharging" "$batpath/status" && echo "true" || echo "false")
+    done  << EOF
+$(find /sys/class/power_supply -maxdepth 1 -iname '*bat*')
+EOF
+    ;;
+  *CYGWIN*|*MSYS*|*MINGW*)
+    while IFS= read -r line; do
+      [ -z "$line" ] && continue
+      battery_discharging=$(printf '%s' "$line" | awk '{ s = ($1 == 1) ? "true" : "false"; print s }')
+    done  << EOF
+$(wmic path Win32_Battery get BatteryStatus, EstimatedChargeRemaining 2> /dev/null | tr -d '\r' | tail -n +2 || true)
+EOF
+    ;;
+  *OpenBSD*)
+    for batid in 0 1 2; do
+      battery_discharging=$(sysctl -n "hw.sensors.acpibat$batid.raw0" | grep -q 1 && echo "true" || echo "false")
+    done
+    ;;
+  *FreeBSD*)
+    battery_discharging=$(sysctl -n 'hw.acpi.battery.state' | grep -q 1 && echo "true" || echo "false")
+    ;;
+esac
+
+if [ -z "$battery_discharging" ]; then
+  tmux set -ug '@battery_status'
+  return
+fi
+
+if [ "$battery_discharging" = "true" ]; then
+  battery_status="$battery_status_discharging"
+else
+  battery_status="$battery_status_charging"
+fi
+
+tmux set -g '@battery_status' "$battery_status" >/dev/null 2>/dev/null
