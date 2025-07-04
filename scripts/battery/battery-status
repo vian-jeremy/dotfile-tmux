@@ -1,9 +1,10 @@
 #!/bin/sh
-# Extracted script from tmux configuration - Battery status
+# Simplified battery status script for TMUX status bar
 
-battery_status_charging=$1
-battery_status_discharging=$2
+battery_status_charging=${1:-"🔌"}
+battery_status_discharging=${2:-"🔋"}
 
+_uname_s=$(uname -s)
 case "$_uname_s" in
   *Darwin*)
     while IFS= read -r line; do

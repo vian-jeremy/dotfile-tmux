@@ -1,13 +1,23 @@
 #!/bin/sh
-# Toggle tmux mouse mode on/off
+# Toggle tmux mouse mode on/off with display feedback
 
 old=$(tmux show -gv mouse)
 new=""
+message=""
+icon=""
 
 if [ "$old" = "on" ]; then
   new="off"
+  message="Mouse mode: OFF"
+  icon="🚫"
 else
   new="on"
+  message="Mouse mode: ON"
+  icon="↗"
 fi
 
+# Set the new mouse mode
 tmux set -g mouse $new
+
+# Display the status message for 2 seconds
+tmux display-message -d 2000 "$icon $message"
