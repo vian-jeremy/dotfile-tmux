@@ -40,6 +40,17 @@ All customizations must use the `#!important` suffix when overriding base settin
 - `<prefix> -`: Split pane vertically
 - `<prefix> _`: Split pane horizontally
 
+### Session Management (Enhanced)
+- `<prefix> S`: Choose session from list
+- `<prefix> K`: Kill current session (with confirmation)
+- `<prefix> C-c`: Create new session
+- `<prefix> C-f`: Find session by name
+
+### Advanced Features
+- `<prefix> Y`: Toggle pane synchronization
+- Mouse wheel scrolling in copy mode
+- Enhanced terminal RGB color support
+
 ### Navigation
 - `<prefix> h/j/k/l`: Navigate panes (Vim-style)
 - `<prefix> H/J/K/L`: Resize panes
@@ -92,6 +103,21 @@ The `.tmux.conf.local` file uses variables prefixed with `tmux_conf_` to control
 - TERM environment variable should be set to `xterm-256color`
 - TPM (Tmux Plugin Manager) support is built-in
 - Mouse mode can be toggled for accessibility
+
+## Performance Optimizations (v2024.1)
+
+- **Status interval**: 5 seconds (improved from 10s for better responsiveness)
+- **History limit**: 10,000 lines (increased from 5,000 for better scrollback)
+- **Terminal support**: Enhanced with `tmux-256color` and RGB color support
+- **Mouse integration**: Wheel scrolling support in copy mode
+
+## Plugin Configuration
+
+### Enabled Plugins
+- **tmux-resurrect**: Session persistence across reboots
+- **tmux-continuum**: Automatic session saving every 15 minutes
+- **Neovim integration**: Special handling for Neovim sessions
+- **Pane content capture**: Saves pane contents for full restoration
 
 ## Common Tasks
 
