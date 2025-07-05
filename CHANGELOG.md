@@ -1,5 +1,24 @@
 # TMUX Configuration Changelog
 
+## [v2024.2-pre-release] - 2025-07-05 - Pre-release Coordination
+
+### 🔄 Multi-Repository Release
+- **COORDINATED** pre-release across dotfiles ecosystem
+- **SYNCHRONIZED** with main dotfiles v2.1.0-pre-release
+- **ALIGNED** with Neovim configuration v2.1.0-pre-release
+
+### 🚀 Enhanced Features
+- **MAINTAINED** all existing performance improvements
+- **PRESERVED** session management and plugin enhancements
+- **CONTINUED** support for advanced pane operations
+
+### 📚 Documentation
+- **ALIGNED** with unified release documentation
+- **MAINTAINED** comprehensive CHANGELOG format
+- **COORDINATED** version tracking across repositories
+
+---
+
 ## [v2024.1] - 2025-01-05
 
 ### Performance Improvements
