@@ -40,13 +40,16 @@
 ## Pane Management
 
 ### Pane Creation
+- `<prefix> v` - Split with a vertical divider (panes side by side), in current directory
+- `<prefix> h` - Split with a horizontal divider (panes stacked), in current directory
+- `<prefix> _` / `<prefix> -` - Same as `v` / `h`
 - `<prefix> %` - Split window vertically (left/right)
 - `<prefix> "` - Split window horizontally (top/bottom)
 
 ### Pane Navigation
+- `Ctrl+↑/↓/←/→` - Navigate panes (no prefix)
 - `<prefix> o` - Go to next pane
 - `<prefix> ;` - Go to last active pane
-- `<prefix> h/j/k/l` - Navigate panes (vim-style, if configured)
 - `<prefix> ↑/↓/←/→` - Navigate panes with arrow keys
 
 ### Pane Resizing
