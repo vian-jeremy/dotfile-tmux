@@ -85,19 +85,23 @@
 - `w/b` - Move by word forward/backward
 - `0/$` - Beginning/end of line
 - `g/G` - Top/bottom of buffer
-- `Ctrl+u/d` - Page up/down
+- `u/d` - Half page up/down
+- `Ctrl+b` - Page up
+- `H/L` - Beginning/end of line
 
 ### Selection & Copying
-- `Space` - Start selection
-- `Enter` - Copy selection and exit copy mode
-- `v` - Start selection (if vi mode enabled)
-- `y` - Copy selection (if vi mode enabled)
+- `v` / `Space` - Start selection
+- `V` - Select whole line (extend with `j/k`)
+- `Ctrl+v` - Toggle rectangle (column) selection
+- `y` / `Enter` - Copy selection to system clipboard and exit copy mode
 
 ### Search in Copy Mode
 - `/` - Search forward
 - `?` - Search backward
 - `n` - Next search result
 - `N` - Previous search result
+- `*` - Search word under cursor
+- `Ctrl+f` - Fuzzy-search the whole scrollback with fzf in a popup (context preview; `Enter` jump, `Tab` multi-select, `Ctrl+y` copy lines)
 
 ---
 

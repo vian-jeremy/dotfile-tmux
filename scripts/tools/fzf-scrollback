@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Fuzzy-search a pane's scrollback with fzf (run inside a tmux popup).
+# Enter: jump to the line in copy mode. Ctrl-Y: copy the selected lines to the clipboard.
+set -euo pipefail
+
+pane=${1:?usage: fzf-scrollback <pane_id>}
+
+scrollback=$(mktemp)
+trap 'rm -f "$scrollback"' EXIT
+tmux capture-pane -p -t "$pane" -S - -E - > "$scrollback"
+
+# Number every physical line (1 = top of history), then drop blank ones.
+# --height/--margin/--footer override FZF_DEFAULT_OPTS so fzf fills the popup.
+result=$(awk '/[^[:space:]]/ { printf "%d\t%s\n", NR, $0 }' "$scrollback" \
+  | fzf --tac --no-sort --multi --exact \
+        --height=100% --margin=0 --padding=0 --no-border --footer='' \
+        --delimiter='\t' --with-nth=2.. \
+        --expect=ctrl-y \
+        --preview="awk -v n={1} 'NR >= n - 12 && NR <= n + 12 { printf \"%s %s\\n\", (NR == n ? \"▶\" : \" \"), \$0 }' '$scrollback'" \
+        --preview-window='down,45%,border-top' \
+        --prompt='scrollback> ' \
+        --header='Enter: jump  ·  Ctrl-Y: copy  ·  Tab: multi-select  ·  Esc: quit') || exit 0
+
+key=$(head -n1 <<<"$result")
+selected=$(tail -n +2 <<<"$result")
+[ -n "$selected" ] || exit 0
+
+if [ "$key" = "ctrl-y" ]; then
+  cut -f2- <<<"$selected" | tmux-clipboard-copy --source-stdin
+  tmux display-message "Copied $(wc -l <<<"$selected") line(s)"
+  exit 0
+fi
+
+line=$(head -n1 <<<"$selected" | cut -f1)
+tmux copy-mode -t "$pane"
+tmux send-keys -t "$pane" -X history-top
+[ "$line" -gt 1 ] && tmux send-keys -t "$pane" -X -N "$((line - 1))" cursor-down
+tmux send-keys -t "$pane" -X start-of-line
