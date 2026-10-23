@@ -47,10 +47,9 @@
 - `<prefix> "` - Split window horizontally (top/bottom)
 
 ### Pane Navigation
-- `Ctrl+↑/↓/←/→` - Navigate panes (no prefix)
+- `<prefix> ↑/↓/←/→` - Navigate panes with arrow keys (repeatable)
 - `<prefix> o` - Go to next pane
 - `<prefix> ;` - Go to last active pane
-- `<prefix> ↑/↓/←/→` - Navigate panes with arrow keys
 
 ### Pane Resizing
 - `<prefix> Ctrl+↑/↓/←/→` - Resize pane
