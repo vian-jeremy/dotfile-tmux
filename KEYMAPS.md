@@ -47,12 +47,12 @@
 - `<prefix> "` - Split window horizontally (top/bottom)
 
 ### Pane Navigation
-- `<prefix> ↑/↓/←/→` - Navigate panes with arrow keys (repeatable)
+- `<prefix> ↑/↓/←/→` - Navigate panes with arrow keys (repeatable, also with Ctrl held)
 - `<prefix> o` - Go to next pane
 - `<prefix> ;` - Go to last active pane
 
 ### Pane Resizing
-- `<prefix> Ctrl+↑/↓/←/→` - Resize pane
+- `<prefix> H/J/K/L` - Resize pane (2 cells)
 - `<prefix> Alt+↑/↓/←/→` - Resize pane (alternative)
 
 ### Pane Control
