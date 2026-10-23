@@ -76,8 +76,12 @@
 ## Copy Mode & Scrolling
 
 ### Enter Copy Mode
-- `<prefix> [` - Enter copy mode (scroll/search)
+- `Ctrl+f` (no prefix) - Search the pane output: copy mode + incremental search upward
+- `<prefix> Ctrl+f` - Send a real Ctrl+f to the program (shell, vim, less)
+- `<prefix> Enter` / `<prefix> Space` / `<prefix> [` - Enter copy mode (scroll/search)
 - `q` - Exit copy mode
+
+Hints for the current mode (normal, after prefix, copy mode) show at the top right of the active pane title bar.
 
 ### Navigation in Copy Mode
 - `h/j/k/l` - Move cursor (vim-style)
